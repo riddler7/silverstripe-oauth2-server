@@ -5,7 +5,6 @@ namespace AdvancedLearning\Oauth2Server\Tests;
 use AdvancedLearning\Oauth2Server\AuthorizationServer\DefaultGenerator;
 use AdvancedLearning\Oauth2Server\Controllers\AuthoriseController;
 use AdvancedLearning\Oauth2Server\Entities\UserEntity;
-use AdvancedLearning\Oauth2Server\Extensions\GroupExtension;
 use AdvancedLearning\Oauth2Server\Middleware\AuthenticationMiddleware;
 use AdvancedLearning\Oauth2Server\Models\Client;
 use AdvancedLearning\Oauth2Server\Repositories\AccessTokenRepository;
@@ -20,21 +19,16 @@ use League\OAuth2\Server\AuthorizationServer;
 use League\OAuth2\Server\CryptTrait;
 use League\OAuth2\Server\Grant\ClientCredentialsGrant;
 use League\OAuth2\Server\Grant\PasswordGrant;
-use Lcobucci\JWT\Claim\Factory as ClaimFactory;
-use Lcobucci\JWT\Parser;
-use Lcobucci\JWT\Parsing\Encoder;
 use GuzzleHttp\Psr7\Response;
 use Robbie\Psr7\HttpRequestAdapter;
 use SilverStripe\Control\HTTPApplication;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
-use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\Kernel;
-use SilverStripe\Core\Tests\Startup\ErrorControlChainMiddlewareTest\BlankKernel;
+use AdvancedLearning\Oauth2Server\Tests\BlankKernel;
 use SilverStripe\Dev\SapphireTest;
-use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
 use SilverStripe\Security\Security;
 use function file_get_contents;
@@ -163,6 +157,30 @@ class OAuthServerTest extends SapphireTest
         $this->assertNull($result, 'Resource Server shouldn\'t modify the response');
     }
 
+    /**
+     * Make sure any fake oauth headers don't get passed on.
+     */
+    public function testFakeOauthHeaders()
+    {
+        $response = $this->generateClientAccessToken();
+        $data = json_decode((string)$response->getBody(), true);
+        $token = $data['access_token'];
+
+        $request = new HTTPRequest('GET', '/');
+        $request->addHeader('authorization', 'Bearer ' . $token);
+        // fake server port
+        $_SERVER['SERVER_PORT'] = 443;
+
+        $request->addHeader('oauth_client_id', 50000);
+        $request->addHeader('oauth_user_id', 10000);
+
+        $service = new AuthenticationService($this->getResourceServer());
+        $authenticatedRequest = $service->authenticate($request);
+
+        $this->assertNotEquals(50000, $authenticatedRequest->getHeader('oauth_client_id'));
+        $this->assertNotEquals(10000, $authenticatedRequest->getHeader('oauth_user_id'));
+    }
+
     public function testAuthoriseController()
     {
         $controller = new AuthoriseController(new DefaultGenerator());
@@ -198,75 +216,6 @@ class OAuthServerTest extends SapphireTest
         $entity = new UserEntity($member);
 
         $this->assertEquals($member->ID, $entity->getMember()->ID, 'User entity member should have been set');
-    }
-
-    public function testGraphQLClient()
-    {
-        // generate token
-        $response = $this->generateClientAccessToken();
-        $data = json_decode((string)$response->getBody(), true);
-        $token = $data['access_token'];
-
-        // create request
-        $request = new HTTPRequest('GET', '/');
-        $request->addHeader('authorization', 'Bearer ' . $token);
-        // fake server port
-        $_SERVER['SERVER_PORT'] = 443;
-
-        $member = (new \AdvancedLearning\Oauth2Server\GraphQL\Authenticator())->authenticate($request);
-
-        $this->assertEquals('My Web App', $member->FirstName, 'Member FirstName should be same as client name');
-        $this->assertEquals(0, $member->ID, 'Member should not have and ID');
-    }
-
-    public function testGraphQLMember()
-    {
-        $userRepository = new UserRepository();
-        $refreshRepository = new RefreshTokenRepository();
-
-        $server = $this->getAuthorisationServer();
-        $server->enableGrantType(
-            new PasswordGrant($userRepository, $refreshRepository),
-            new \DateInterval('PT1H')
-        );
-
-        $client = $this->objFromFixture(Client::class, 'webapp');
-        $member = $this->objFromFixture(Member::class, 'member1');
-
-        $request = (new ServerRequest(
-            'POST',
-            '',
-            ['Content-Type' => 'application/json']
-        ))->withParsedBody([
-            'grant_type' => 'password',
-            'client_id' => $client->Identifier,
-            'client_secret' => $client->Secret,
-            'scope' => 'members',
-            'username' => $member->Email,
-            'password' => 'password1'
-        ]);
-
-        $response = new Response();
-        $response = $server->respondToAccessTokenRequest($request, $response);
-
-        $data = json_decode((string)$response->getBody(), true);
-        $token = $data['access_token'];
-
-        // check for fn/ln
-        $decoded = (new Parser())->parse($token);
-
-        $this->assertEquals('My', $decoded->getClaim('fn'), 'First name should be correctly set');
-        $this->assertEquals('Test', $decoded->getClaim('ln'), 'Last name should be correctly set');
-
-        // create request
-        $request = new HTTPRequest('GET', '/');
-        $request->addHeader('authorization', 'Bearer ' . $token);
-        // fake server port
-        $_SERVER['SERVER_PORT'] = 443;
-
-        $authMember = (new \AdvancedLearning\Oauth2Server\GraphQL\Authenticator())->authenticate($request);
-
-        $this->assertEquals($member->ID, $authMember->ID, 'Member should exist in DB');
     }
 
     /**
