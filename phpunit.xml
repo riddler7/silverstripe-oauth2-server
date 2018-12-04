@@ -30,7 +30,7 @@
             <exclude />
         </whitelist>
     </filter>
-    <php>
-        <env name="DB" value="SQLITE" />
-    </php>
+    <!--<php>-->
+        <!--<env name="DB" value="SQLITE" />-->
+    <!--</php>-->
 </phpunit>

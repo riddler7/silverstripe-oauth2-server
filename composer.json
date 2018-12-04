@@ -13,10 +13,9 @@
         "silverstripe/framework": "^4.0",
         "league/oauth2-server": "^6.0",
         "silverstripe/vendor-plugin": "^1.0",
-        "robbie/psr7-adapters": "1.1.x-dev",
+        "robbie/psr7-adapters": "^1.0",
         "PHP": ">=7.1",
-        "silverstripe/admin": "^1.0",
-        "silverstripe/graphql": "^1.0"
+        "silverstripe/admin": "^1.0"
     },
     "require-dev": {
         "phpunit/PHPUnit": "^5.7@stable",

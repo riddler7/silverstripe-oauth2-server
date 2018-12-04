@@ -68,6 +68,14 @@ class AuthenticationService implements Authenticator
                 )
             );
         }
+
+        // strip any oauth headers to prevent client side injection
+        foreach ($request->getHeaders() as $name => $value) {
+            if (stripos($name, 'oauth') !== false) {
+                $request->removeHeader($name);
+            }
+        }
+
         // add the request attributes as custom auth headers
         foreach ($psrRequest->getAttributes() as $attribute => $value) {
             $request->addHeader($attribute, $value);
