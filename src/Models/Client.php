@@ -3,6 +3,9 @@
 namespace AdvancedLearning\Oauth2Server\Models;
 
 use function base64_encode;
+use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\GridField\GridField;
+use SilverStripe\Forms\GridField\GridFieldConfig_RelationEditor;
 use SilverStripe\ORM\DataObject;
 
 /**
@@ -19,6 +22,15 @@ class Client extends DataObject
 {
     private static $table_name = 'OauthClient';
 
+    /**
+     * Whether Clients have scopes. The relation is always created, but if set to false will
+     * be hidden from CMS.
+     *
+     * @var bool
+     * @config
+     */
+    private static $has_scopes = true;
+
     private static $db = [
         'Name' => 'Varchar(100)',
         'Grants' => 'Varchar(255)',
@@ -29,6 +41,22 @@ class Client extends DataObject
     private static $summary_fields = [
         'Name'
     ];
+
+    private static $many_many = [
+        'Scopes' => Scope::class
+    ];
+
+    public function updateCMSFields(FieldList $fields)
+    {
+        if (self::config()->get('has_scopes')) {
+            $fields->addFieldToTab('Root.Oauth', GridField::create(
+                'Scopes',
+                'Scopes',
+                $this->owner->Scopes(),
+                GridFieldConfig_RelationEditor::create()
+            ));
+        }
+    }
 
     /**
      * Checks whether this ClientEntity has the given grant type.

@@ -28,17 +28,27 @@ class ScopeRepository implements ScopeRepositoryInterface
         ClientEntityInterface $clientEntity,
         $userIdentifier = null
     ) {
-        // only check if we have a user, should a client have scopes?
-        if (empty($userIdentifier)) return $scopes;
-
-        $userEntity = (new UserRepository())->getUserEntityByIdentifier($userIdentifier);
-
         $approvedScopes = [];
+
         foreach ($scopes as $scope) {
-            if ($userEntity->hasScope($scope->getIdentifier())) {
+            if ($clientEntity->hasScope($scope)) {
                 $approvedScopes[] = $scope;
             }
         }
+
+        // check user scopes
+        if ($userIdentifier) {
+
+            $userEntity = (new UserRepository())->getUserEntityByIdentifier($userIdentifier);
+
+            $approvedScopes = [];
+            foreach ($scopes as $scope) {
+                if ($userEntity->hasScope($scope->getIdentifier())) {
+                    $approvedScopes[] = $scope;
+                }
+            }
+        }
+
         return $approvedScopes;
     }
 }
