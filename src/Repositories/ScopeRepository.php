@@ -31,7 +31,7 @@ class ScopeRepository implements ScopeRepositoryInterface
         $approvedScopes = [];
 
         foreach ($scopes as $scope) {
-            if ($clientEntity->hasScope($scope)) {
+            if ($clientEntity->hasScope($scope->getIdentifier())) {
                 $approvedScopes[] = $scope;
             }
         }

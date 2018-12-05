@@ -34,8 +34,8 @@ class ScopeTest extends SapphireTest
         $service = new ScopeService();
         $member = $this->objFromFixture(Member::class, 'member1');
 
-        $this->assertTrue($service->hasScope('scope1', $member, 'Member should have scope1'));
-        $this->assertFalse($service->hasScope('scope2', $member, 'Member should not have scope2'));
+        $this->assertTrue($service->hasScope('scope1', $member), 'Member should have scope1');
+        $this->assertFalse($service->hasScope('scope2', $member), 'Member should not have scope2');
     }
 
     /**
@@ -43,20 +43,34 @@ class ScopeTest extends SapphireTest
      */
     public function testClientHasScope()
     {
+        $scopeRepo = new ScopeRepository();
+        $scopeList = ['members', 'scope1', 'scope2'];
+        $scopes = [];
+
+        foreach ($scopeList as $scope) {
+            $scopes[] = $scopeRepo->getScopeEntityByIdentifier($scope);
+        }
+
         $clientEntity = (new ClientRepository())->getClientEntity(
             'Thisisanidentifier',
             'client_credentials',
             'Thisisareallybadsecret'
         );
 
-        $scopes = (new ScopeRepository())->finalizeScopes(
-            ['members', 'scope1', 'scope2'],
+        $finalizedScopes = $scopeRepo->finalizeScopes(
+            $scopes,
             'client_credentials',
             $clientEntity
         );
 
-        $this->assertTrue(in_array('members', $scopes), 'Should have members scope');
-        $this->assertTrue(in_array('scope1', $scopes), 'Should have scope1 scope');
-        $this->assertFalse(in_array('scope2', $scopes), 'Should not have scope2 scope');
+        $finalScopes = [];
+        // convert into array of strings
+        foreach ($finalizedScopes as $scope) {
+            $finalScopes[] = $scope->getIdentifier();
+        }
+
+        $this->assertTrue(in_array('members', $finalScopes), 'Should have members scope');
+        $this->assertTrue(in_array('scope1', $finalScopes), 'Should have scope1 scope');
+        $this->assertFalse(in_array('scope2', $finalScopes), 'Should not have scope2 scope');
     }
 }
