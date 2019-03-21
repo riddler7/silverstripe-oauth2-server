@@ -35,11 +35,13 @@ class UserRepository implements UserRepositoryInterface
      * Gets a UserEntity by their identifier (Member->Email).
      *
      * @param string $userIdentifier
-     * @return UserEntity
+     * @return UserEntity|null
      */
-    public function getUserEntityByIdentifier(string $userIdentifier): UserEntity
+    public function getUserEntityByIdentifier(string $userIdentifier): ?UserEntity
     {
-        return new UserEntity(Member::get()->filter(['Email' => $userIdentifier])->first());
+        $user = Member::get()->filter(['Email' => $userIdentifier])->first();
+
+        return $user ? new UserEntity($user) : null;
     }
 
 }
