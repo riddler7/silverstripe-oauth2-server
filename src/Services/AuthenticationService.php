@@ -78,7 +78,8 @@ class AuthenticationService implements Authenticator
 
         // add the request attributes as custom auth headers
         foreach ($psrRequest->getAttributes() as $attribute => $value) {
-            $request->addHeader($attribute, $value);
+            // check for empty array, breaks otherwise
+            $request->addHeader($attribute, is_array($value) && !count($value) ? '' : $value);
         }
 
         return $request;
